@@ -3,6 +3,22 @@
 //    https://otpravka.pochta.ru/specification#/nogroup-normalization_adress
 //    https://otpravka.pochta.ru/specification#/nogroup-rate_calculate
 
+function createArrayFromFile($srcFile) {
+    $f = fopen($srcFile, 'r');
+    $array = array();
+    while (!feof($f)) {
+        $s = trim(fgets($f));
+        if ($s == '') {
+            continue;
+        }
+        // TODO: как то сделать, чтобы тут рендерелись пустые переменные (чтобы сделать функцию универсальной)
+        list($itemId, $itemMass) = explode('|', $s);
+        $array[trim($itemId)] = trim($itemMass);
+    }
+    fclose($f);
+    return $array;
+}
+
 function utf8ucfirst($string)
 {
     $first = mb_strtoupper(mb_substr($string, 0, 1, 'UTF-8'), 'UTF-8');
@@ -10,16 +26,19 @@ function utf8ucfirst($string)
     return $first . $other;
 }
 
-function getItemValues($content) {
+function getItemValues($content, $listItems) {
     $message = '';
     $count = 0;
     $orderSum = 0;
+    $mass = 0;
     foreach ($content as $item) {
+        $id = $item['GoodsCode'];
         $message .= $item['GoodsCode'] . ' - ' . $item['Count'] . '; ';
         $count += $item['Count'];
         $orderSum += $item['PriceWithDiscount'];
+        $mass += str_replace(',', '.', $listItems[$id]);
     }
-    return array('Message' => $message, 'Count' => $count, 'OrderSum' => $orderSum);
+    return array('Message' => $message, 'Count' => $count, 'OrderSum' => $orderSum, 'Mass' => $mass);
 }
 
 function getFullAddress($src) {
@@ -41,6 +60,7 @@ require_once __DIR__ . '/config.php';
 if (isset($_FILES['file']['error']) && $_FILES['file']['error'] == 0 && substr($_FILES['file']['name'], -4) == '.xml') {
     $xml = json_decode(json_encode(simplexml_load_file($_FILES['file']['tmp_name'])), true);
     $codes = array();
+    $listItemsWithMass = createArrayFromFile('itemsWithMass.txt');
 
     require_once __DIR__ . '/phpexcel/Classes/PHPExcel.php';
     $phpexcel = new PHPExcel();
@@ -77,11 +97,11 @@ if (isset($_FILES['file']['error']) && $_FILES['file']['error'] == 0 && substr($
                 $countItems++;
             }
         }
-        $itemValues = $countItems ? getItemValues($content['Item']) : getItemValues($content);  
+        $itemValues = $countItems ? getItemValues($content['Item'], $listItemsWithMass) : getItemValues($content, $listItemsWithMass);  
 
         $page->setCellValue("A" . ($k + 2), $address);
         $page->setCellValue("B" . ($k + 2), $addressant);
-        $page->setCellValue("C" . ($k + 2), $mass);
+        $page->setCellValue("C" . ($k + 2), $itemValues['Mass']);
         $page->setCellValue("D" . ($k + 2), $itemValues['OrderSum']);
         $page->setCellValue("E" . ($k + 2), $payment);
         $page->setCellValue("F" . ($k + 2), $orderId);
