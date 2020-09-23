@@ -10,6 +10,28 @@ function utf8ucfirst($string)
     return $first . $other;
 }
 
+function getColor($count) {
+    $highlight = '';
+    switch ($count) {
+        case 1:
+            $highlight = '81C784'; // Зеленый
+            break;
+        case 2:
+            $highlight = 'FFF59D'; // Желтый
+            break;
+        case 3:
+            $highlight = '82B1FF'; // Синий
+            break;
+        case $count >= 4:
+            $highlight = 'EF5350'; // Красный
+            break;
+        default:
+            $highlight = 'FFFFFF';
+            break;
+    }
+    return $highlight;
+}
+
 function getItemValues($content) {
     $message = '';
     $count = 0;
@@ -19,7 +41,7 @@ function getItemValues($content) {
         $count += $item['Count'];
         $orderSum += $item['PriceWithDiscount'];
     }
-    return array('Message' => $message, 'Count' => $count, 'OrderSum' => $orderSum);
+    return array('Message' => $message, 'Count' => $count, 'OrderSum' => $orderSum, 'Mass' => $mass, 'Highlight' => getColor($count));
 }
 
 function getFullAddress($src) {
@@ -90,6 +112,8 @@ if (isset($_FILES['file']['error']) && $_FILES['file']['error'] == 0 && substr($
         $page->setCellValue("I" . ($k + 2), $orderStatus);
         $page->setCellValue("J" . ($k + 2), $deliverySum);
         $page->setCellValue("K" . ($k + 2), $itemValues['Message']);
+        // Установка цвета
+        $page->getStyle("H" . ($k + 2))->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID)->getStartColor()->setRGB($itemValues['Highlight']);
 
     }
     $arr = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K');
