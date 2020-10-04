@@ -12,8 +12,8 @@ function createArrayFromFile($srcFile) {
             continue;
         }
         // TODO: как то сделать, чтобы тут рендерелись пустые переменные (чтобы сделать функцию универсальной)
-        list($itemId, $itemMass) = explode('|', $s);
-        $array[trim($itemId)] = trim($itemMass);
+        list($itemId, $itemMass, $itemVendorCode) = explode('|', $s);
+        $array[trim($itemId)] = ['itemMass' => trim($itemMass), 'itemVendorCode' => trim($itemVendorCode)];
     }
     fclose($f);
     return $array;
@@ -49,18 +49,20 @@ function getColor($count) {
 }
 
 function getItemValues($content, $listItems) {
-    $message = '';
     $count = 0;
-    $orderSum = 0;
+    $message = '';
     $mass = 0;
+    $orderSum = 0;
+    $vendorCode = '';
     foreach ($content as $item) {
         $id = $item['GoodsCode'];
         $message .= $item['GoodsCode'] . ' - ' . $item['Count'] . '; ';
+        $vendorCode .= $listItems[$id]['itemVendorCode'] . '; ';
         $count += $item['Count'];
         $orderSum += $item['PriceWithDiscount'];
-        $mass += str_replace(',', '.', $listItems[$id]);
+        $mass += str_replace(',', '.', $listItems[$id]['itemMass']);
     }
-    return array('Message' => $message, 'Count' => $count, 'OrderSum' => $orderSum, 'Mass' => $mass, 'Highlight' => getColor($count));
+    return array('Message' => $message, 'Count' => $count, 'OrderSum' => $orderSum, 'Mass' => $mass, 'Highlight' => getColor($count), 'VendorCode' => $vendorCode);
 }
 
 function getFullAddress($src) {
@@ -98,6 +100,7 @@ if (isset($_FILES['file']['error']) && $_FILES['file']['error'] == 0 && substr($
     $page->setCellValue("I1", "ORDERSTATUS");
     $page->setCellValue("J1", "ДОСТАВКА");
     $page->setCellValue("K1", "ИНФОРМАЦИЯ");
+    $page->setCellValue("L1", 'АРТИКУЛ');
 
     foreach ($xml['Order'] as $k => $v) {
         $error = '';
@@ -132,11 +135,12 @@ if (isset($_FILES['file']['error']) && $_FILES['file']['error'] == 0 && substr($
         $page->setCellValue("I" . ($k + 2), $orderStatus);
         $page->setCellValue("J" . ($k + 2), $deliverySum);
         $page->setCellValue("K" . ($k + 2), $itemValues['Message']);
+        $page->setCellValue("L" . ($k + 2), $itemValues['VendorCode']);
         // Установка цвета
         $page->getStyle("H" . ($k + 2))->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID)->getStartColor()->setRGB($itemValues['Highlight']);
 
     }
-    $arr = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K');
+    $arr = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L');
     foreach ($arr as &$value) {
       $page->getColumnDimension($value)->setAutoSize(true);
       $page->getStyle($value . 1)->getFont()->setBold(true);
